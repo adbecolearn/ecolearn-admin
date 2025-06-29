@@ -3,21 +3,85 @@
  * System administration dengan AI model management dan green computing
  */
 
-// Import EcoLearn Shared Libraries
-import { 
-    initEcoLearn, 
-    carbonTracker, 
-    apiService, 
-    authUtils, 
-    config 
-} from 'https://adbecolearn.github.io/ecolearn-shared/index.js';
+// Import EcoLearn Shared Libraries with error handling
+let initEcoLearn, carbonTracker, apiService, authUtils, config;
 
-// Initialize EcoLearn
-const ecolearn = initEcoLearn({
-    carbonTracking: true,
-    performanceMonitoring: true,
-    debugMode: config.isDevelopment()
-});
+async function loadSharedLibraries() {
+    try {
+        console.log('🔄 Loading EcoLearn shared libraries for admin...');
+
+        const sharedModule = await import('https://adbecolearn.github.io/ecolearn-shared/index.js');
+
+        // Extract exports with validation
+        initEcoLearn = sharedModule.initEcoLearn;
+        carbonTracker = sharedModule.carbonTracker;
+        apiService = sharedModule.apiService;
+        authUtils = sharedModule.authUtils;
+        config = sharedModule.config;
+
+        // Validate all required exports
+        const requiredExports = { initEcoLearn, carbonTracker, apiService, authUtils, config };
+        const missingExports = Object.entries(requiredExports)
+            .filter(([name, value]) => !value)
+            .map(([name]) => name);
+
+        if (missingExports.length > 0) {
+            throw new Error(`Missing exports: ${missingExports.join(', ')}`);
+        }
+
+        console.log('✅ Admin shared libraries loaded successfully');
+        return true;
+
+    } catch (error) {
+        console.error('❌ Failed to load admin shared libraries:', error);
+        showLoadingError('Failed to load required libraries. Please refresh the page.');
+        return false;
+    }
+}
+
+// Initialize EcoLearn with error handling
+async function initializeEcoLearn() {
+    try {
+        console.log('🔄 Initializing EcoLearn for admin...');
+
+        const ecolearn = await initEcoLearn({
+            carbonTracking: true,
+            performanceMonitoring: true,
+            debugMode: config?.isDevelopment() || false
+        });
+
+        console.log('✅ EcoLearn initialized for admin:', ecolearn);
+        return ecolearn;
+
+    } catch (error) {
+        console.error('❌ Failed to initialize EcoLearn for admin:', error);
+        showLoadingError('Failed to initialize application. Please refresh the page.');
+        return null;
+    }
+}
+
+// Show loading error to user
+function showLoadingError(message) {
+    const loadingScreen = document.getElementById('loading-screen');
+    if (loadingScreen) {
+        const loadingText = loadingScreen.querySelector('.loading-text');
+        if (loadingText) {
+            loadingText.textContent = message;
+            loadingText.style.color = '#dc3545';
+        }
+
+        // Add retry button
+        const retryBtn = document.createElement('button');
+        retryBtn.textContent = 'Retry';
+        retryBtn.style.cssText = 'margin-top: 20px; padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;';
+        retryBtn.onclick = () => window.location.reload();
+
+        const loadingContent = loadingScreen.querySelector('.loading-content');
+        if (loadingContent && !loadingContent.querySelector('button')) {
+            loadingContent.appendChild(retryBtn);
+        }
+    }
+}
 
 // Admin Portal App Class
 class AdminApp {
@@ -28,8 +92,9 @@ class AdminApp {
         this.sidebarOpen = false;
         this.refreshInterval = null;
         this.systemMetrics = {};
-        
-        this.init();
+        this.sessionStart = Date.now();
+
+        // Don't call init() immediately - wait for libraries to load
     }
 
     /**
@@ -37,15 +102,22 @@ class AdminApp {
      */
     async init() {
         try {
-            // Check authentication
+            console.log('👑 Starting Admin Portal initialization...');
+
+            // Validate required libraries are loaded
+            if (!authUtils || !carbonTracker || !config) {
+                throw new Error('Required libraries not loaded');
+            }
+
+            // Check authentication (skip redirect for testing)
             await this.checkAuthentication();
-            
+
             // Setup DOM references
             this.setupDOM();
-            
+
             // Setup event listeners
             this.setupEventListeners();
-            
+
             // Setup carbon tracking
             this.setupCarbonTracking();
             
@@ -693,16 +765,43 @@ class AdminApp {
     }
 }
 
-// Initialize app when DOM is loaded
-document.addEventListener('DOMContentLoaded', () => {
-    new AdminApp();
-});
+// Initialize app with proper loading sequence
+async function initializeAdminApp() {
+    try {
+        console.log('🚀 Starting EcoLearn Admin Portal...');
 
-// Also initialize immediately for module loading
+        // Load shared libraries first
+        const librariesLoaded = await loadSharedLibraries();
+        if (!librariesLoaded) {
+            console.error('❌ Cannot proceed without shared libraries');
+            return;
+        }
+
+        // Initialize EcoLearn
+        const ecolearn = await initializeEcoLearn();
+        if (!ecolearn) {
+            console.error('❌ Cannot proceed without EcoLearn initialization');
+            return;
+        }
+
+        // Create and initialize admin app
+        const adminApp = new AdminApp();
+        await adminApp.init();
+
+        // Make app available globally for debugging
+        window.adminApp = adminApp;
+
+        console.log('🎉 Admin Portal ready!');
+
+    } catch (error) {
+        console.error('❌ Failed to initialize Admin Portal:', error);
+        showLoadingError('Application failed to start. Please refresh the page.');
+    }
+}
+
+// Start initialization when DOM is ready
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-        new AdminApp();
-    });
+    document.addEventListener('DOMContentLoaded', initializeAdminApp);
 } else {
-    new AdminApp();
+    initializeAdminApp();
 }

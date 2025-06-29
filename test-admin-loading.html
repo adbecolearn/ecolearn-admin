@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test EcoLearn Admin Portal</title>
+    
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        
+        .loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            color: white;
+        }
+        
+        .loading-screen.hidden {
+            display: none;
+        }
+        
+        .loading-content {
+            text-align: center;
+        }
+        
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(255,255,255,0.3);
+            border-top: 4px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .app-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .test-status {
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 4px;
+            border-left: 4px solid #dc3545;
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .test-status.success {
+            border-left-color: #28a745;
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        #console-output {
+            background: #000;
+            color: #0f0;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: monospace;
+            height: 200px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="loading-screen">
+        <div class="loading-content">
+            <div class="loading-logo">
+                <div style="background: white; color: #dc3545; padding: 5px 15px; border-radius: 4px; font-weight: bold;">EcoLearn Admin</div>
+            </div>
+            <div class="loading-spinner"></div>
+            <p class="loading-text">Initializing Admin Dashboard...</p>
+        </div>
+    </div>
+
+    <!-- Main App Container -->
+    <div id="app" class="app-container" style="display: none;">
+        <h1>👑 EcoLearn Admin Portal Test</h1>
+        
+        <div id="test-status" class="test-status">
+            ✅ Admin portal loading test in progress...
+        </div>
+        
+        <div class="test-info">
+            <h2>📊 Test Information</h2>
+            <ul>
+                <li><strong>Purpose:</strong> Test admin portal loading and initialization</li>
+                <li><strong>Libraries:</strong> EcoLearn Shared Libraries from GitHub Pages</li>
+                <li><strong>Authentication:</strong> Debug mode (no real auth required)</li>
+                <li><strong>Role:</strong> Administrator</li>
+            </ul>
+        </div>
+        
+        <div class="user-info">
+            <h2>👤 User Information</h2>
+            <p><strong>Name:</strong> <span id="userName">Loading...</span></p>
+            <p><strong>Admin ID:</strong> <span id="userAdminId">Loading...</span></p>
+            <p><strong>Role:</strong> <span id="userRole">Loading...</span></p>
+        </div>
+        
+        <div class="system-info">
+            <h2>🔧 System Information</h2>
+            <p><strong>Environment:</strong> <span id="environment">Loading...</span></p>
+            <p><strong>Carbon Tracking:</strong> <span id="carbonStatus">Loading...</span></p>
+            <p><strong>Portal Type:</strong> Admin Dashboard</p>
+        </div>
+        
+        <h2>📋 Console Output</h2>
+        <div id="console-output"></div>
+    </div>
+
+    <!-- Load Admin Portal JavaScript -->
+    <script type="module" src="assets/js/admin.js"></script>
+    
+    <!-- Test monitoring script -->
+    <script>
+        // Capture console logs
+        const originalLog = console.log;
+        const originalError = console.error;
+        
+        function addToConsole(type, ...args) {
+            const output = document.getElementById('console-output');
+            if (output) {
+                const timestamp = new Date().toLocaleTimeString();
+                const message = args.map(arg => 
+                    typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+                ).join(' ');
+                output.textContent += `[${timestamp}] ${type.toUpperCase()}: ${message}\n`;
+                output.scrollTop = output.scrollHeight;
+            }
+        }
+        
+        console.log = (...args) => {
+            originalLog(...args);
+            addToConsole('log', ...args);
+        };
+        
+        console.error = (...args) => {
+            originalError(...args);
+            addToConsole('error', ...args);
+        };
+        
+        // Monitor app initialization
+        let checkInterval = setInterval(() => {
+            if (window.adminApp) {
+                console.log('✅ Admin app detected!');
+                
+                // Update test status
+                const testStatus = document.getElementById('test-status');
+                if (testStatus) {
+                    testStatus.className = 'test-status success';
+                    testStatus.textContent = '✅ Admin portal loaded successfully!';
+                }
+                
+                // Update user info
+                const app = window.adminApp;
+                if (app.currentUser) {
+                    const userName = document.getElementById('userName');
+                    const userAdminId = document.getElementById('userAdminId');
+                    const userRole = document.getElementById('userRole');
+                    
+                    if (userName) userName.textContent = `${app.currentUser.firstName} ${app.currentUser.lastName}`;
+                    if (userAdminId) userAdminId.textContent = app.currentUser.adminId || 'ADM001';
+                    if (userRole) userRole.textContent = app.currentUser.role;
+                }
+                
+                // Update system info
+                const environment = document.getElementById('environment');
+                const carbonStatus = document.getElementById('carbonStatus');
+                
+                if (environment) environment.textContent = window.location.hostname === 'localhost' ? 'Development' : 'Production';
+                if (carbonStatus) carbonStatus.textContent = 'Active';
+                
+                clearInterval(checkInterval);
+            }
+        }, 1000);
+        
+        // Timeout after 30 seconds
+        setTimeout(() => {
+            if (window.adminApp) return;
+            
+            console.error('❌ Admin app failed to load within 30 seconds');
+            const testStatus = document.getElementById('test-status');
+            if (testStatus) {
+                testStatus.textContent = '❌ Admin portal failed to load within 30 seconds';
+            }
+            clearInterval(checkInterval);
+        }, 30000);
+        
+        console.log('🧪 Admin test monitoring started');
+    </script>
+</body>
+</html>
